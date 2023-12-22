@@ -53,10 +53,13 @@ PYBIND11_MODULE(_cgpy, m){
 	    })
         .def("__eq__", &Matrix::Accelerated_Matrix::operator==)
         .def("__add__", &Matrix::Accelerated_Matrix::operator+)
-        .def("__sub__", static_cast<Matrix::Accelerated_Matrix (Matrix::Accelerated_Matrix::*)(Matrix::Accelerated_Matrix const &)>(&Matrix::Accelerated_Matrix::operator-))
-        .def("__neg__", static_cast<Matrix::Accelerated_Matrix (Matrix::Accelerated_Matrix::*)()>(&Matrix::Accelerated_Matrix::operator-))
-        .def("__mul__", static_cast<Matrix::Accelerated_Matrix (Matrix::Accelerated_Matrix::*)(double const &)>(&Matrix::Accelerated_Matrix::operator*))
-        .def("__matmul__", static_cast<Matrix::Accelerated_Matrix (Matrix::Accelerated_Matrix::*)(Matrix::Accelerated_Matrix const &)>(&Matrix::Accelerated_Matrix::operator*))
+        .def("__iadd__", &Matrix::Accelerated_Matrix::operator+=)
+        .def("__sub__", static_cast<Matrix::Accelerated_Matrix (Matrix::Accelerated_Matrix::*)(Matrix::Accelerated_Matrix const &) const>(&Matrix::Accelerated_Matrix::operator-))
+        .def("__isub__", &Matrix::Accelerated_Matrix::operator-=)
+        .def("__neg__", static_cast<Matrix::Accelerated_Matrix (Matrix::Accelerated_Matrix::*)() const>(&Matrix::Accelerated_Matrix::operator-))
+        .def("__mul__", static_cast<Matrix::Accelerated_Matrix (Matrix::Accelerated_Matrix::*)(double const &) const>(&Matrix::Accelerated_Matrix::operator*))
+        .def("__imul__", &Matrix::Accelerated_Matrix::operator*=)
+        .def("__matmul__", static_cast<Matrix::Accelerated_Matrix (Matrix::Accelerated_Matrix::*)(Matrix::Accelerated_Matrix const &) const>(&Matrix::Accelerated_Matrix::operator*))
         .def("set_number_of_threads", [](Matrix::Accelerated_Matrix &mat, int number_of_threads){
             mat.set_number_of_threads() = number_of_threads;
         })
