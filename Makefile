@@ -1,6 +1,6 @@
 #Flags
 CXX = g++
-FLAGS = -g -O3 -m64 -Wall -shared -std=c++17 -fPIC -fopenmp -pthread
+FLAGS = -g -O3 -m64 -Wall -shared -std=c++17 -fPIC -fopenmp -pthread -ffast-math -ftree-vectorize
 PYBINCLUDE = $(shell python3-config --includes) $(shell python3 -m pybind11 --includes)
 FLAGS_DEP = -MMD -MP
 DIRS = $(shell find $(shell pwd)/cpp/* -type d)
@@ -21,10 +21,15 @@ DEPS = $(TARGET:.o=.d)
 -include $(DEPS)
 
 #Makefile
-.PHONY: all demo test clean
-default: all
+.PHONY: all all_file demo test clean
+default: all_file
 
-all: $(MODULE_SHARE_OBJS)
+rebuild:
+	$(MAKE) clean
+	$(MAKE) all_file
+	$(MAKE) test
+
+all_file: $(MODULE_SHARE_OBJS)
 
 $(MODULE_SHARE_OBJS): $(TARGET)
 	$(CXX) $(FLAGS) $^ -o $@
