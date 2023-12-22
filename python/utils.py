@@ -22,6 +22,14 @@ def is_pos_def(x):
     """
     return np.all(np.linalg.eigvals(x) > 0)
 
+def is_symmetric(x): 
+    """
+    Functionality: Check if a matrix is symmetric
+    Parameters:
+    x: The input matrix.
+    """
+    return np.allclose(x, x.T)
+
 def generate_pos_def(n):
     """
     Functionality: Generate a random positive definite matrix
@@ -31,14 +39,36 @@ def generate_pos_def(n):
     A = np.random.rand(n, n)
     return A.dot(A.T)
 
-def generate_symmetric(n):
+def generate_symmetric(A):
     """
     Functionality: Generate a random symmetric matrix
     Parameters:
     n: The dimension of the matrix.
     """
-    A = np.random.rand(n, n)
     return (A + A.T)/2
+
+def generate_pos_def_symmetric(n, cond, max_value):
+    """
+    Functionality: Generate a random positive definite symmetric matrix
+    Parameters:
+    n: The dimension of the matrix.
+    cond: The fixed condition number.
+    max_value: The maximum value in a matrix
+    """
+    # Initialize a random positive definite symmetric matrix.
+    a = generate_pos_def(n)
+    a = generate_symmetric(a)
+    # Adjust the singlar values to fix the condition number.
+    # Since cond = s[0] / s[n - 1], by linear scaling s, we can fix the condition number.
+    u, s, v = np.linalg.svd(a)
+    news = s[0] * (np.full((n), 1) - ((cond - 1) / cond) * (np.full((n), s[0]) - s) / (s[0] - s[n - 1]))
+    news_mat = np.diag(news)
+    a = np.dot(u, np.dot(news_mat, v))
+    # Adjust the maximum value in a
+    current_max_value = a.max()
+    a = a / current_max_value * max_value
+    assert(is_pos_def(a) and is_symmetric(a))
+    return a
 
 def custom_linear_CG(x, a, b, epsilon = 5e-7, epoch=10000000, num_threads = 3):
     """
@@ -92,11 +122,12 @@ def np_linear_CG(x, A, b, epsilon, epoch=10000000):
             return x
         
         D = A.dot(delta)
-        beta = -(res.dot(delta))/(delta.dot(D)) 
+        delta_dot_D = (delta.dot(D)) 
+        beta = -(res.dot(delta))/delta_dot_D
         x = x + beta*delta
 
         res = A.dot(x) - b 
-        chi = res.dot(D)/(delta.dot(D)) 
+        chi = res.dot(D)/delta_dot_D
         delta = chi*delta -  res 
 
         count += 1
@@ -298,7 +329,7 @@ def custom_accelerated_nonlinear_CG(X, tol, alpha, beta, f, Df, method = "Fletch
 
     while True:
         start_point = X
-        step = custom_naive_line_search(f = f, df = Df, x = start_point, d = delta, alpha=alpha, beta=beta)
+        step = custom_accelerated_line_search(f = f, df = Df, x = start_point, d = delta, alpha=alpha, beta=beta, num_threads = num_threads)
         if step!=None:
             next_X = X+ step*delta 
         elif step != step: #IsNaN

@@ -21,25 +21,18 @@ from _cgpy import CG
 from _cgpy.Matrix import Naive_Matrix
 from _cgpy.Matrix import Accelerated_Matrix
 
-def compare_linear_cg(epoch,  num_of_threads = 16):
+def compare_linear_cg(n, cond, max_value, epoch, num_of_threads = 16):
     print("Compare linear CG")
     np.random.seed(0)
-    a = np.random.rand(1000, 1000)
-    a = utils.generate_pos_def(1000)
-    a = utils.generate_symmetric(1000)
-    while(np.linalg.cond(a) < 10000):
-        a = np.random.rand(1000, 1000)
-        a = utils.generate_pos_def(1000)
-        a = utils.generate_symmetric(1000)
-    print("find a good matrix")
-    b = np.random.rand(1000)
-    x = np.random.rand(1000)
+    a = utils.generate_pos_def_symmetric(n, cond, max_value)
+    b = np.random.rand(n)
+    x = np.random.rand(n)
 
     sum = 0.0
     for i in range(epoch):
         total = 0.0
         start = time.time()
-        x = utils.np_linear_CG(x, a, b, 5e-7)
+        newx = utils.np_linear_CG(x, a, b, 5e-7)
         end = time.time()
         total += end - start
         sum += total
@@ -59,7 +52,7 @@ def compare_linear_cg(epoch,  num_of_threads = 16):
     np_total_avg = sum / epoch
     print("Naive average time: ", np_total_avg)
 
-    for i in range(2, num_of_threads):
+    for i in range(2, num_of_threads + 1):
         sum = 0.0
         for j in range(epoch):
             total = 0.0
@@ -276,7 +269,7 @@ def compare_non_linear_cg_method(epoch,  num_of_threads = 16, msize = 1000):
             print("Custom average time for ", method, " and ", j, " threads: ", np_total_avg)
 
 if __name__ == '__main__':
-    compare_linear_cg(30, 16)
+    compare_linear_cg(n = 3000, cond = 100000, max_value = 10, epoch = 5, num_of_threads = 4)
     compare_nonlinear_cg_func2(30, 16)
     compare_line_search_func2(100, 16, 1000)
     compare_non_linear_cg_method(100, 16, 1000)

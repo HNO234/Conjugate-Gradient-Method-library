@@ -24,21 +24,15 @@ from _cgpy.Matrix import Accelerated_Matrix
 
 def test_linear_cg():
     np.random.seed(0)
-    a = np.random.rand(100, 100)
-    a = utils.generate_pos_def(100)
-    a = utils.generate_symmetric(100)
-    while(np.linalg.cond(a) < 50000):
-        a = np.random.rand(100, 100)
-        a = utils.generate_pos_def(100)
-        a = utils.generate_symmetric(100)
+    a = utils.generate_pos_def_symmetric(100, 1000, 10)
     b = np.random.rand(100)
     x = np.random.rand(100)
-    x = utils.np_linear_CG(x, a, b, 5e-7)
-    print('x',x)
+    x_np = utils.np_linear_CG(x, a, b, 5e-7)
+    print('x',x_np)
     # Test the numpy linear CG method
     x_min = np.linalg.solve(a, b) # Differentiate to find the minimizer
     print('x_min', x_min)
-    assert(np.isclose(x_min, x).all())
+    assert(np.isclose(x_min, x_np).all())
     # Test the custom linear CG method without acceleration
     np_naive_mat_x_min = utils.custom_linear_CG(x = x, a = a, b = b,  epsilon = 5e-7, num_threads = 1)
     print('np_naive_mat_x_min', np_naive_mat_x_min)
@@ -48,6 +42,7 @@ def test_linear_cg():
     print(' np_acc_mat_x_min', np_acc_mat_x_min)
     assert(np.isclose(x_min, np_acc_mat_x_min).all())
 
+# TODO: x
 def test_nonlinear_cg():
     np.random.seed(3)
     x_rand = np.random.uniform(low=3, high=5, size=(2,))
@@ -68,7 +63,7 @@ def test_nonlinear_cg():
 
         print("case 1 custom : ", method," , with acceleration")
         x = np.copy(x_rand)
-        x, _ = utils.custom_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method)
+        x, _ = utils.custom_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method, 2)
         x = np.array(x)
         x_min = np.array([1, 1])
         assert(np.isclose(x_min, x).all())              
