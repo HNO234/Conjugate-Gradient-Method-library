@@ -1,0 +1,10 @@
+*.so
+cpp/*.so
+cpp/*/*.so
+cpp/*/*.o
+*/__pycache__
+cpp/*/__pycache__
+.pytest_cache
+*/.pytest_cache
+demo/results
+cpp/*/*.d
