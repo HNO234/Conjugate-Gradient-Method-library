@@ -25,6 +25,10 @@ class linear_CG{
         double epsilon = 5e-7;
         double beta = 0;
         double chi = 0;
+        double res_dot_delta = 0;
+        double delta_dot_D = 0;
+        double res_dot_D = 0;
+        double D_dot_D = 0;
         int epoch = 10000000;
         int number_of_threads = std::thread::hardware_concurrency();
 };

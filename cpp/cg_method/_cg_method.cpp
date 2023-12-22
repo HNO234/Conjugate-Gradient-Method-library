@@ -48,26 +48,57 @@ Matrix::Accelerated_Matrix linear_CG::solve_by_Accelerated_Matrix(Matrix::Accele
         throw std::out_of_range("CG method Number of thread is 0.");
     } 
     A.set_number_of_threads() = number_of_threads;
-    //b.set_number_of_threads() = number_of_threads;
-    //x.set_number_of_threads() = number_of_threads;
-    //res.set_number_of_threads() = number_of_threads;
-    //delta.set_number_of_threads() = number_of_threads;
-    //D.set_number_of_threads() = number_of_threads;
+    b.set_number_of_threads() = number_of_threads;
+    x.set_number_of_threads() = number_of_threads;
+    res.set_number_of_threads() = number_of_threads;
+    delta.set_number_of_threads() = number_of_threads;
+    D.set_number_of_threads() = number_of_threads;
 
     res = A * x - b; //1d array
     delta = -res; //1d array
+    auto naive_dot_product = [](Matrix::Accelerated_Matrix &a_mat,
+                                Matrix::Accelerated_Matrix &b_mat) {
+        double ret = 0;
+        auto total_size = a_mat.nrow() * a_mat.ncol();
+        for (auto i = size_t{}; i < total_size; i++)
+            ret += a_mat.buffer(i) * b_mat.buffer(i);
+        return ret;
+    };
     for (int i = 0; i < epoch; ++i)
     {
-        if (res.norm() < epsilon)
-        {
+        if (res.norm() <= epsilon)
             break;
-        }
-        D = A * delta; //1d array
-        beta = -(res * delta)(0, 0) / (delta * D)(0, 0); //scalar
-        x = x + (delta * beta); //1d array
-        res = A * x - b; //1d array
-        chi = (res * D)(0, 0) / (delta * D)(0, 0); //scalar
-        delta = delta * chi -  res; //1d array
+        D = A * delta;
+#pragma omp parallel num_threads(number_of_threads)
+    {
+        
+#pragma omp single
+      {
+#pragma omp task shared(res, delta)
+        res_dot_delta = naive_dot_product(res,delta);
+#pragma omp task shared(delta, D)
+        delta_dot_D = naive_dot_product(delta, D);
+#pragma omp task shared(res, D)
+        res_dot_D = naive_dot_product(res, D);
+        // run on the first thread
+        D_dot_D = naive_dot_product(D, D);
+      }
+    }
+        beta = -res_dot_delta / delta_dot_D;
+#pragma omp parallel num_threads(number_of_threads)
+    {
+        
+#pragma omp single
+      {
+#pragma omp task shared(x, delta, beta)
+        x += delta * beta;
+        // run on the first thread
+        res += D * beta;
+      }
+    }
+        chi = (res_dot_D + beta * D_dot_D) / (delta_dot_D);
+        delta *= chi;
+        delta -= res;
     }
     return x;
 }
