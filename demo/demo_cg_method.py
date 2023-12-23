@@ -32,7 +32,7 @@ def compare_linear_cg(n, cond, max_value, epoch, num_of_threads = 16):
     for i in range(epoch):
         total = 0.0
         start = time.time()
-        newx = utils.np_linear_CG(x, a, b, 5e-7)
+        np_x = utils.np_linear_CG(x, a, b, 5e-7)
         end = time.time()
         total += end - start
         sum += total
@@ -76,7 +76,7 @@ def compare_nonlinear_cg_func1(epoch,  num_of_threads = 16):
         for i in range(epoch):
             total = 0.0
             start = time.time()
-            x, _ = utils.np_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method)
+            np_x, _ = utils.np_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method)
             end = time.time()
             total += end - start
             sum += total
@@ -89,7 +89,7 @@ def compare_nonlinear_cg_func1(epoch,  num_of_threads = 16):
         for i in range(epoch):
             total = 0.0
             start = time.time()
-            x, _ = utils.custom_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method, 1)
+            np_naive_mat_x_min, _ = utils.custom_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method, 1)
             end = time.time()
             total += end - start
             sum += total
@@ -98,13 +98,13 @@ def compare_nonlinear_cg_func1(epoch,  num_of_threads = 16):
         print("Custom average time for ", method, "in case 1 : ", np_total_avg)
 
 
-        for j in range(2, num_of_threads):
+        for j in range(2, num_of_threads + 1):
             sum = 0.0
             x = np.copy(x_rand)
             for i in range(epoch):
                 total = 0.0
                 start = time.time()
-                x, _ = utils.custom_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method, j)
+                np_acc_mat_x_min, _ = utils.custom_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method, j)
                 end = time.time()
                 total += end - start
                 sum += total
@@ -122,7 +122,7 @@ def compare_nonlinear_cg_func2(epoch,  num_of_threads = 16):
         for i in range(epoch):
             total = 0.0
             start = time.time()
-            x, _ = utils.np_nonlinear_CG(x, 1e-8, 0.5, 0.8, utils.nonlinear_func_2, utils.grad(utils.nonlinear_func_2), method)
+            np_x, _ = utils.np_nonlinear_CG(x, 1e-8, 0.5, 0.8, utils.nonlinear_func_2, utils.grad(utils.nonlinear_func_2), method)
             end = time.time()
             total += end - start
             sum += total
@@ -135,7 +135,7 @@ def compare_nonlinear_cg_func2(epoch,  num_of_threads = 16):
         for i in range(epoch):
             total = 0.0
             start = time.time()
-            x, _ = utils.custom_nonlinear_CG(x, 1e-8, 0.5, 0.8, utils.nonlinear_func_2, utils.grad(utils.nonlinear_func_2), method, 1)
+            np_acc_mat_x_min, _ = utils.custom_nonlinear_CG(x, 1e-8, 0.5, 0.8, utils.nonlinear_func_2, utils.grad(utils.nonlinear_func_2), method, 1)
             end = time.time()
             total += end - start
             sum += total
@@ -144,13 +144,13 @@ def compare_nonlinear_cg_func2(epoch,  num_of_threads = 16):
         print("Custom average time for ", method, "in case 1 : ", np_total_avg)
 
 
-        for j in range(2, num_of_threads):
+        for j in range(2, num_of_threads + 1):
             sum = 0.0
             x = np.copy(x_rand)
             for i in range(epoch):
                 total = 0.0
                 start = time.time()
-                x, _ = utils.custom_nonlinear_CG(x, 1e-8, 0.5, 0.8, utils.nonlinear_func_2, utils.grad(utils.nonlinear_func_2), method, j)
+                np_acc_mat_x_min, _ = utils.custom_nonlinear_CG(x, 1e-8, 0.5, 0.8, utils.nonlinear_func_2, utils.grad(utils.nonlinear_func_2), method, j)
                 end = time.time()
                 total += end - start
                 sum += total
@@ -190,7 +190,7 @@ def compare_line_search_func2(epoch,  num_of_threads = 16, msize = 1000):
         #print("Custom for epoch ", i, " takes ", total, " seconds")
     np_total_avg = sum / epoch
     print("Custom average time for line search : ", np_total_avg)
-    for j in range(2, num_of_threads):
+    for j in range(2, num_of_threads + 1):
         sum = 0.0
         x = np.copy(x_rand)
         for i in range(epoch):
@@ -255,7 +255,7 @@ def compare_non_linear_cg_method(epoch,  num_of_threads = 16, msize = 1000):
         m_cur_df = Accelerated_Matrix(cur_df)
         m_next_df = Accelerated_Matrix(next_df)
         m_delta = Accelerated_Matrix(delta)
-        for j in range(2, num_of_threads):
+        for j in range(2, num_of_threads + 1):
             sum = 0.0
             for i in range(epoch):
                 total = 0.0
@@ -269,7 +269,7 @@ def compare_non_linear_cg_method(epoch,  num_of_threads = 16, msize = 1000):
             print("Custom average time for ", method, " and ", j, " threads: ", np_total_avg)
 
 if __name__ == '__main__':
-    compare_linear_cg(n = 3000, cond = 100000, max_value = 10, epoch = 5, num_of_threads = 4)
-    compare_nonlinear_cg_func2(30, 16)
-    compare_line_search_func2(100, 16, 1000)
-    compare_non_linear_cg_method(100, 16, 1000)
+    compare_linear_cg(n = 512, cond = 100000, max_value = 10, epoch = 5, num_of_threads = 4)
+    compare_nonlinear_cg_func2(4, 16)
+    compare_line_search_func2(4, 16, 1000)
+    compare_non_linear_cg_method(4, 16, 1000)

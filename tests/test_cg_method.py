@@ -42,7 +42,6 @@ def test_linear_cg():
     print(' np_acc_mat_x_min', np_acc_mat_x_min)
     assert(np.isclose(x_min, np_acc_mat_x_min).all())
 
-# TODO: x
 def test_nonlinear_cg():
     np.random.seed(3)
     x_rand = np.random.uniform(low=3, high=5, size=(2,))
