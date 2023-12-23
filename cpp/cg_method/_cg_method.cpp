@@ -64,6 +64,15 @@ Matrix::Accelerated_Matrix linear_CG::solve_by_Accelerated_Matrix(Matrix::Accele
             ret += a_mat.buffer(i) * b_mat.buffer(i);
         return ret;
     };
+    auto naive_iadd_with_scalar = [](Matrix::Accelerated_Matrix &a_mat,
+                                    Matrix::Accelerated_Matrix &b_mat,
+                                    double beta) {
+        Matrix::Accelerated_Matrix ret = a_mat;
+        auto total_size = a_mat.nrow() * a_mat.ncol();
+        for (auto i = size_t{}; i < total_size; i++)
+           a_mat(i, 0) += beta * b_mat.buffer(i);
+        return ret;
+    };
     for (int i = 0; i < epoch; ++i)
     {
         if (res.norm() <= epsilon)
@@ -91,9 +100,9 @@ Matrix::Accelerated_Matrix linear_CG::solve_by_Accelerated_Matrix(Matrix::Accele
 #pragma omp single
       {
 #pragma omp task shared(x, delta, beta)
-        x += delta * beta;
+        naive_iadd_with_scalar(x, delta, beta);
         // run on the first thread
-        res += D * beta;
+        naive_iadd_with_scalar(res, D, beta);
       }
     }
         chi = (res_dot_D + beta * D_dot_D) / (delta_dot_D);
