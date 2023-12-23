@@ -1,5 +1,5 @@
-#ifndef __MATRIX_HPP__
-#define __MATRIX_HPP__
+#ifndef __MATRIX_ACC_HPP__
+#define __MATRIX_ACC_HPP__
 
 #include <iostream>
 #include <iomanip>
@@ -8,8 +8,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <omp.h>
-#include <thread>
+#include <cuda.h>
+#include <cuda_runtime.h>
 
 namespace Matrix{
 
@@ -88,6 +88,7 @@ public:
     Accelerated_Matrix & operator=(Accelerated_Matrix && other);
     Accelerated_Matrix operator+(Accelerated_Matrix const & other) const;
     Accelerated_Matrix& operator+=(Accelerated_Matrix const & other);
+    __global__ void iadd_gpu(float* a_mat, float* b_mat);
     Accelerated_Matrix operator-(Accelerated_Matrix const & other) const;
     Accelerated_Matrix& operator-=(Accelerated_Matrix const & other);
     Accelerated_Matrix operator-() const;

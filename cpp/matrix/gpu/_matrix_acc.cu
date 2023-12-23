@@ -1,4 +1,6 @@
-#include <_matrix.hpp>
+#include <_matrix_acc.hpp>
+
+#define BLOCK_SIZE 1024
 
 namespace Matrix {
 
@@ -79,7 +81,6 @@ Accelerated_Matrix & Accelerated_Matrix::operator=(std::vector<std::vector<doubl
         throw std::out_of_range("number of elements mismatch");
     }
     size_t i;
-    //#pragma omp parallel for private(i) num_threads(number_of_threads)
     for (i=0; i<m_nrow; ++i)
     {
         memcpy(m_buffer + i * m_ncol, vec2d[i].data(), m_ncol * sizeof(double));
@@ -109,12 +110,25 @@ Accelerated_Matrix& Accelerated_Matrix::operator+=(Accelerated_Matrix const & ot
         throw std::out_of_range("Number of elements mismatch.");
     }
     size_t i, shape = m_nrow * m_ncol;
-#pragma omp parallel for private(i) num_threads(number_of_threads)
-    for(i = 0 ; i < shape; ++i){
-        m_buffer[i] += other.m_buffer[i];
-    }
+// #pragma omp parallel for private(i) num_threads(number_of_threads)
+//     for(i = 0 ; i < shape; ++i){
+//         m_buffer[i] += other.m_buffer[i];
+//     }
+    double *d_m_buffer, *d_other_m_buffer;
+    cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+    cudaHostGetDevicePointer(&d_other_m_buffer, other.m_buffer, 0);
+    dim3 blockSize(BLOCK_SIZE);
+    dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    iadd_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, shape);
+    cudaDeviceSynchronize();
     return (*this);
 }
+
+ __global__ void iadd_gpu(float* a_mat, float* b_mat, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        a_mat[i] += b_mat[i];
+ }
 
 Accelerated_Matrix Accelerated_Matrix::operator-(Accelerated_Matrix const & other) const {
     Accelerated_Matrix temp = *this;
@@ -126,7 +140,7 @@ Accelerated_Matrix& Accelerated_Matrix::operator-=(Accelerated_Matrix const & ot
         throw std::out_of_range("Number of elements mismatch.");
     }
     size_t i, shape = m_nrow * m_ncol;
-#pragma omp parallel for private(i) num_threads(number_of_threads)
+// #pragma omp parallel for private(i) num_threads(number_of_threads)
     for(i = 0 ; i < shape; ++i){
         m_buffer[i] -= other.m_buffer[i];
     }
@@ -136,7 +150,7 @@ Accelerated_Matrix& Accelerated_Matrix::operator-=(Accelerated_Matrix const & ot
 Accelerated_Matrix Accelerated_Matrix::operator-() const {
     Accelerated_Matrix temp(m_nrow, m_ncol);
     size_t i, shape = m_nrow * m_ncol;
-    #pragma omp parallel for private(i) num_threads(number_of_threads)
+    // #pragma omp parallel for private(i) num_threads(number_of_threads)
     for(i = 0 ; i < shape; ++i){
         temp.m_buffer[i] = -m_buffer[i];
     }
@@ -149,7 +163,7 @@ Accelerated_Matrix Accelerated_Matrix::operator*(Accelerated_Matrix const & mat)
         Accelerated_Matrix temp(m_nrow, m_ncol);
         size_t i, shape = m_nrow * m_ncol;
         double value = mat(0,0);
-        #pragma omp parallel for private(i, value) num_threads(number_of_threads)
+        // #pragma omp parallel for private(i, value) num_threads(number_of_threads)
         for(i = 0 ; i < shape; ++i){
             temp.m_buffer[i] = m_buffer[i] * value;
         }
@@ -160,7 +174,7 @@ Accelerated_Matrix Accelerated_Matrix::operator*(Accelerated_Matrix const & mat)
         Accelerated_Matrix temp(mat.nrow(), mat.ncol());
         size_t i, shape = m_nrow * m_ncol;
         double value = (*this)(0,0);
-        #pragma omp parallel for private(i, value) num_threads(number_of_threads)
+        // #pragma omp parallel for private(i, value) num_threads(number_of_threads)
         for(i = 0 ; i < shape; ++i){
             temp.m_buffer[i] = mat.m_buffer[i] * value;
         }
@@ -171,7 +185,7 @@ Accelerated_Matrix Accelerated_Matrix::operator*(Accelerated_Matrix const & mat)
         Accelerated_Matrix return_value(1,1);
         double sum = .0f;
         size_t i;
-        #pragma omp parallel for private(i) reduction(+:sum) num_threads(number_of_threads)
+        // #pragma omp parallel for private(i) reduction(+:sum) num_threads(number_of_threads)
         for(i = 0; i < (*this).nrow(); ++i){
             sum += (*this).m_buffer[i] * mat.m_buffer[i];
         }
@@ -182,7 +196,7 @@ Accelerated_Matrix Accelerated_Matrix::operator*(Accelerated_Matrix const & mat)
     if (mat.ncol() == 1) {
         Accelerated_Matrix return_value((*this).nrow(), mat.ncol());
         size_t i;
-#pragma omp parallel for private(i) num_threads(number_of_threads)
+// #pragma omp parallel for private(i) num_threads(number_of_threads)
         for(i = 0; i < (*this).nrow(); ++i){
             size_t mat_this_begin = i * (*this).ncol();
             size_t j = 0;
@@ -242,7 +256,7 @@ Accelerated_Matrix Accelerated_Matrix::operator*(double const & other) const {
 
 Accelerated_Matrix& Accelerated_Matrix::operator*=(double const & other) {
     size_t i, shape = m_nrow * m_ncol;
-#pragma omp parallel for private(i) num_threads(number_of_threads)
+// #pragma omp parallel for private(i) num_threads(number_of_threads)
     for(i = 0 ; i < shape; ++i){
         m_buffer[i] *= other;
     }
@@ -292,7 +306,7 @@ double Accelerated_Matrix::norm()
     double sum = 0.0;
     size_t i;
     size_t shape = m_nrow * m_ncol;
-    #pragma omp parallel for private(i) reduction(+:sum) num_threads(number_of_threads)
+    // #pragma omp parallel for private(i) reduction(+:sum) num_threads(number_of_threads)
     for (i = 0; i< shape; ++i)
     {
         sum += m_buffer[i] * m_buffer[i];
@@ -306,12 +320,17 @@ size_t Accelerated_Matrix::nrow() const { return m_nrow; }
 size_t Accelerated_Matrix::ncol() const { return m_ncol; }
 
 void Accelerated_Matrix::reset_buffer(size_t nrow, size_t ncol){
-    if (m_buffer) { delete[] m_buffer; }
-        const size_t nelement = nrow * ncol;
-    if (nelement) { m_buffer = new double[nelement]; }
-    else          { m_buffer = nullptr; }
-        m_nrow = nrow;
-        m_ncol = ncol;
+    if (m_buffer) {
+        cudaFreeHost(m_buffer);
+    }
+    const size_t nelement = nrow * ncol;
+    if (nelement) {
+        cudaHostAlloc(&m_buffer, sizeof(double) * nelement, cudaHostAllocMapped);
+    } else {
+        m_buffer = nullptr;
+    }
+    m_nrow = nrow;
+    m_ncol = ncol;
 }
 
 }

@@ -2,7 +2,8 @@
 #define __CG_METHOD_HPP__
 
 #include <vector>
-#include <_matrix.hpp>
+#include <_matrix_naive.hpp>
+#include <_matrix_acc.hpp>
 #include <algorithm>
 #include <cmath>
 #include <omp.h>
