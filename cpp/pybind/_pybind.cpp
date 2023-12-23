@@ -2,7 +2,8 @@
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
 #include <utility>
-#include <_matrix.hpp>
+#include <_matrix_naive.hpp>
+#include <_matrix_acc.hpp>
 #include <_cg_method.hpp>
 #include <omp.h>
 namespace py = pybind11;

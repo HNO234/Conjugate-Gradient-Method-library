@@ -1,4 +1,5 @@
 #include <_matrix_acc.hpp>
+#include <thread>
 
 #define BLOCK_SIZE 1024
 
@@ -105,11 +106,17 @@ Accelerated_Matrix Accelerated_Matrix::operator+(Accelerated_Matrix const & othe
     return temp += other;
 }
 
+ __global__ void iadd_gpu(double* a_mat, double* b_mat, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        a_mat[i] += b_mat[i];
+ }
+
 Accelerated_Matrix& Accelerated_Matrix::operator+=(Accelerated_Matrix const & other){
     if(( nrow() != other.nrow()) || ( ncol() != other.ncol())){
         throw std::out_of_range("Number of elements mismatch.");
     }
-    size_t i, shape = m_nrow * m_ncol;
+    size_t shape = m_nrow * m_ncol;
 // #pragma omp parallel for private(i) num_threads(number_of_threads)
 //     for(i = 0 ; i < shape; ++i){
 //         m_buffer[i] += other.m_buffer[i];
@@ -123,12 +130,6 @@ Accelerated_Matrix& Accelerated_Matrix::operator+=(Accelerated_Matrix const & ot
     cudaDeviceSynchronize();
     return (*this);
 }
-
- __global__ void iadd_gpu(float* a_mat, float* b_mat, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n)
-        a_mat[i] += b_mat[i];
- }
 
 Accelerated_Matrix Accelerated_Matrix::operator-(Accelerated_Matrix const & other) const {
     Accelerated_Matrix temp = *this;
@@ -214,39 +215,27 @@ Accelerated_Matrix Accelerated_Matrix::operator*(Accelerated_Matrix const & mat)
     size_t max_i = (*this).nrow();
     size_t max_j = mat.ncol();
     size_t max_k = (*this).ncol();
-
-    std::vector<std::thread> threads;
-    threads.reserve(number_of_threads);
-    
     for (int t = 0; t < number_of_threads; ++t) {
-        threads.emplace_back([&, t, max_i, max_j, max_k, tsize]() {
-            size_t start_i = t * max_i / number_of_threads;
-            size_t end_i = (t + 1) * max_i / number_of_threads;
-            for (size_t j = 0; j < max_j; j += tsize) {
-                for (size_t k = 0; k < max_k; k += tsize) {
-                    size_t upper_j = std::min(j + tsize, max_j);
-                    size_t upper_k = std::min(k + tsize, max_k);
-                        for (size_t ii = start_i; ii < end_i; ++ii) {
-                            for (size_t jj = j; jj < upper_j; ++jj) {
-                                double sum = .0;
-                                for (size_t kk = k; kk < upper_k; ++kk) {
-                                    sum += (*this)(ii, kk) * mat(kk, jj);
-                                }
-                                result(ii, jj) += sum;
+        size_t start_i = t * max_i / number_of_threads;
+        size_t end_i = (t + 1) * max_i / number_of_threads;
+        for (size_t j = 0; j < max_j; j += tsize) {
+            for (size_t k = 0; k < max_k; k += tsize) {
+                size_t upper_j = std::min(j + tsize, max_j);
+                size_t upper_k = std::min(k + tsize, max_k);
+                    for (size_t ii = start_i; ii < end_i; ++ii) {
+                        for (size_t jj = j; jj < upper_j; ++jj) {
+                            double sum = .0;
+                            for (size_t kk = k; kk < upper_k; ++kk) {
+                                sum += (*this)(ii, kk) * mat(kk, jj);
                             }
+                            result(ii, jj) += sum;
                         }
                     }
-                }
             }
-        );
-    }
-
-    for (auto& thread : threads) {
-        thread.join();
+        }
     }
 
     return result;
-    
 }
 
 Accelerated_Matrix Accelerated_Matrix::operator*(double const & other) const {

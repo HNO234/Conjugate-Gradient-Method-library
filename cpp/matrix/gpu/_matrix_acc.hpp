@@ -88,7 +88,6 @@ public:
     Accelerated_Matrix & operator=(Accelerated_Matrix && other);
     Accelerated_Matrix operator+(Accelerated_Matrix const & other) const;
     Accelerated_Matrix& operator+=(Accelerated_Matrix const & other);
-    __global__ void iadd_gpu(float* a_mat, float* b_mat);
     Accelerated_Matrix operator-(Accelerated_Matrix const & other) const;
     Accelerated_Matrix& operator-=(Accelerated_Matrix const & other);
     Accelerated_Matrix operator-() const;

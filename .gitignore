@@ -8,3 +8,5 @@ cpp/*/__pycache__
 */.pytest_cache
 demo/results
 cpp/*/*.d
+cpp/*/*/*.d
+cpp/*/*/*.o
