@@ -117,10 +117,6 @@ Accelerated_Matrix& Accelerated_Matrix::operator+=(Accelerated_Matrix const & ot
         throw std::out_of_range("Number of elements mismatch.");
     }
     size_t shape = m_nrow * m_ncol;
-// #pragma omp parallel for private(i) num_threads(number_of_threads)
-//     for(i = 0 ; i < shape; ++i){
-//         m_buffer[i] += other.m_buffer[i];
-//     }
     double *d_m_buffer, *d_other_m_buffer;
     cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
     cudaHostGetDevicePointer(&d_other_m_buffer, other.m_buffer, 0);
@@ -136,77 +132,149 @@ Accelerated_Matrix Accelerated_Matrix::operator-(Accelerated_Matrix const & othe
     return temp -= other;
 }
 
+ __global__ void isub_gpu(double* a_mat, double* b_mat, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        a_mat[i] -= b_mat[i];
+ }
+
 Accelerated_Matrix& Accelerated_Matrix::operator-=(Accelerated_Matrix const & other){
     if(( nrow() != other.nrow()) || ( ncol() != other.ncol())){
         throw std::out_of_range("Number of elements mismatch.");
     }
-    size_t i, shape = m_nrow * m_ncol;
-// #pragma omp parallel for private(i) num_threads(number_of_threads)
-    for(i = 0 ; i < shape; ++i){
-        m_buffer[i] -= other.m_buffer[i];
-    }
+    size_t shape = m_nrow * m_ncol;
+    double *d_m_buffer, *d_other_m_buffer;
+    cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+    cudaHostGetDevicePointer(&d_other_m_buffer, other.m_buffer, 0);
+    dim3 blockSize(BLOCK_SIZE);
+    dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    isub_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, shape);
+    cudaDeviceSynchronize();
     return (*this);
 }
 
+ __global__ void neg_gpu(double* a_mat, double* b_mat, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        a_mat[i] = -b_mat[i];
+ }
+
 Accelerated_Matrix Accelerated_Matrix::operator-() const {
     Accelerated_Matrix temp(m_nrow, m_ncol);
-    size_t i, shape = m_nrow * m_ncol;
-    // #pragma omp parallel for private(i) num_threads(number_of_threads)
-    for(i = 0 ; i < shape; ++i){
-        temp.m_buffer[i] = -m_buffer[i];
-    }
+    size_t shape = m_nrow * m_ncol;
+    double *d_m_buffer, *d_other_m_buffer;
+    cudaHostGetDevicePointer(&d_m_buffer, temp.m_buffer, 0);
+    cudaHostGetDevicePointer(&d_other_m_buffer, m_buffer, 0);
+    dim3 blockSize(BLOCK_SIZE);
+    dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    neg_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, shape);
+    cudaDeviceSynchronize();
     return temp;
 }
 
+__global__ void imul_gpu(double* a_mat, double other, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        a_mat[i] *= other;
+ }
+
+ __global__ void matmul1_gpu(double* a_mat, double* b_mat, double other, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        a_mat[i] = b_mat[i] * other;
+ }
+
+ __device__ void warpReduce(volatile double *sdata, unsigned int tid) {
+    sdata[tid] += sdata[tid + 32];
+    sdata[tid] += sdata[tid + 16];
+    sdata[tid] += sdata[tid + 8];
+    sdata[tid] += sdata[tid + 4];
+    sdata[tid] += sdata[tid + 2];
+    sdata[tid] += sdata[tid + 1];
+}
+
+ __global__ void matmul2_gpu(double* out_mat, double* a_mat, double* b_mat, int ncol) {
+    __shared__ double sdata[BLOCK_SIZE];
+    unsigned int tid = threadIdx.x;
+    unsigned int a_mat_i = blockIdx.x * ncol + tid;
+    unsigned int b_mat_i = tid;
+    sdata[tid] = 0;
+    while (b_mat_i < ncol) {
+        sdata[tid] += a_mat[a_mat_i] * b_mat[b_mat_i];
+        a_mat_i += blockDim.x;
+        b_mat_i += blockDim.x;
+    }
+    __syncthreads();
+    if (tid < 512)
+        sdata[tid] += sdata[tid + 512];
+    __syncthreads();
+    if (tid < 256)
+        sdata[tid] += sdata[tid + 256];
+    __syncthreads();
+    if (tid < 128)
+        sdata[tid] += sdata[tid + 128];
+    __syncthreads();
+    if (tid < 64)
+        sdata[tid] += sdata[tid + 64];
+    __syncthreads();
+    if (tid < 32)
+        warpReduce(sdata, tid);
+    if (tid == 0)
+        out_mat[blockIdx.x] = sdata[0];
+ }
 
 Accelerated_Matrix Accelerated_Matrix::operator*(Accelerated_Matrix const & mat) const {
-    if( mat.nrow() == 1 && mat.ncol() == 1){
-        Accelerated_Matrix temp(m_nrow, m_ncol);
-        size_t i, shape = m_nrow * m_ncol;
-        double value = mat(0,0);
-        // #pragma omp parallel for private(i, value) num_threads(number_of_threads)
-        for(i = 0 ; i < shape; ++i){
-            temp.m_buffer[i] = m_buffer[i] * value;
-        }
+    if(mat.nrow() == 1 && mat.ncol() == 1){
+        Accelerated_Matrix temp((*this).nrow(), (*this).ncol());
+        double value = mat(0, 0);
+        size_t shape = (*this).nrow() * (*this).ncol();
+        double *d_m_buffer, *d_other_m_buffer;
+        cudaHostGetDevicePointer(&d_m_buffer, temp.m_buffer, 0);
+        cudaHostGetDevicePointer(&d_other_m_buffer, m_buffer, 0);
+        dim3 blockSize(BLOCK_SIZE);
+        dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
+        matmul1_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, value, shape);
+        cudaDeviceSynchronize();
         return temp;
     }
 
     if( (*this).nrow() == 1 && (*this).ncol() == 1){
         Accelerated_Matrix temp(mat.nrow(), mat.ncol());
-        size_t i, shape = m_nrow * m_ncol;
-        double value = (*this)(0,0);
-        // #pragma omp parallel for private(i, value) num_threads(number_of_threads)
-        for(i = 0 ; i < shape; ++i){
-            temp.m_buffer[i] = mat.m_buffer[i] * value;
-        }
+        double value = (*this)(0, 0);
+        size_t shape = mat.nrow() * mat.ncol();
+        double *d_m_buffer, *d_other_m_buffer;
+        cudaHostGetDevicePointer(&d_m_buffer, temp.m_buffer, 0);
+        cudaHostGetDevicePointer(&d_other_m_buffer, mat.m_buffer, 0);
+        dim3 blockSize(BLOCK_SIZE);
+        dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
+        matmul1_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, value, shape);
+        cudaDeviceSynchronize();
         return temp;
     }
 
     if( (*this).ncol() == 1 && mat.ncol() == 1 && mat.nrow() != 1){
-        Accelerated_Matrix return_value(1,1);
-        double sum = .0f;
-        size_t i;
-        // #pragma omp parallel for private(i) reduction(+:sum) num_threads(number_of_threads)
-        for(i = 0; i < (*this).nrow(); ++i){
-            sum += (*this).m_buffer[i] * mat.m_buffer[i];
-        }
-        return_value.m_buffer[0] = sum;
+        Accelerated_Matrix return_value(1, 1);
+        double *d_m_buffer, *d_other_m_buffer, *d_output_m_buffer;
+        cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+        cudaHostGetDevicePointer(&d_other_m_buffer, mat.m_buffer, 0);
+        cudaHostGetDevicePointer(&d_output_m_buffer, return_value.m_buffer, 0);
+        dim3 blockSize(BLOCK_SIZE);
+        dim3 numBlock(1);
+        matmul2_gpu<<<numBlock, blockSize>>>(d_output_m_buffer, d_m_buffer, d_other_m_buffer, (*this).nrow());
+        cudaDeviceSynchronize();
         return return_value;
     }
     
     if (mat.ncol() == 1) {
         Accelerated_Matrix return_value((*this).nrow(), mat.ncol());
-        size_t i;
-// #pragma omp parallel for private(i) num_threads(number_of_threads)
-        for(i = 0; i < (*this).nrow(); ++i){
-            size_t mat_this_begin = i * (*this).ncol();
-            size_t j = 0;
-            size_t j_end = (*this).ncol();
-            double sum = .0f;
-            for (j = 0; j < j_end; j++)
-                sum += (*this).m_buffer[mat_this_begin + j] * mat.m_buffer[j];
-            return_value.m_buffer[i] = sum;
-        }
+        double *d_m_buffer, *d_other_m_buffer, *d_output_m_buffer;
+        cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+        cudaHostGetDevicePointer(&d_other_m_buffer, mat.m_buffer, 0);
+        cudaHostGetDevicePointer(&d_output_m_buffer, return_value.m_buffer, 0);
+        dim3 blockSize(BLOCK_SIZE);
+        dim3 numBlock((*this).nrow());
+        matmul2_gpu<<<numBlock, blockSize>>>(d_output_m_buffer, d_m_buffer, d_other_m_buffer, (*this).ncol());
+        cudaDeviceSynchronize();
         return return_value;
     }
     
@@ -244,11 +312,13 @@ Accelerated_Matrix Accelerated_Matrix::operator*(double const & other) const {
 }
 
 Accelerated_Matrix& Accelerated_Matrix::operator*=(double const & other) {
-    size_t i, shape = m_nrow * m_ncol;
-// #pragma omp parallel for private(i) num_threads(number_of_threads)
-    for(i = 0 ; i < shape; ++i){
-        m_buffer[i] *= other;
-    }
+    size_t shape = m_nrow * m_ncol;
+    double *d_m_buffer;
+    cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+    dim3 blockSize(BLOCK_SIZE);
+    dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    imul_gpu<<<numBlock, blockSize>>>(d_m_buffer, other, shape);
+    cudaDeviceSynchronize();
     return (*this);
 }
 
@@ -290,16 +360,44 @@ int const & Accelerated_Matrix::get_number_of_threads() const{
     return this -> number_of_threads;
 }
 
+ __global__ void norm_gpu(double& output, double* a_mat, int ncol) {
+    __shared__ double sdata[BLOCK_SIZE];
+    unsigned int tid = threadIdx.x;
+    unsigned int a_mat_i = tid;
+    sdata[tid] = 0;
+    while (a_mat_i < ncol) {
+        sdata[tid] += a_mat[a_mat_i] * a_mat[a_mat_i];
+        a_mat_i += blockDim.x;
+    }
+    __syncthreads();
+    if (tid < 512)
+        sdata[tid] += sdata[tid + 512];
+    __syncthreads();
+    if (tid < 256)
+        sdata[tid] += sdata[tid + 256];
+    __syncthreads();
+    if (tid < 128)
+        sdata[tid] += sdata[tid + 128];
+    __syncthreads();
+    if (tid < 64)
+        sdata[tid] += sdata[tid + 64];
+    __syncthreads();
+    if (tid < 32)
+        warpReduce(sdata, tid);
+    if (tid == 0)
+        output = sdata[0];
+ }
+
 double Accelerated_Matrix::norm()
 {
     double sum = 0.0;
-    size_t i;
     size_t shape = m_nrow * m_ncol;
-    // #pragma omp parallel for private(i) reduction(+:sum) num_threads(number_of_threads)
-    for (i = 0; i< shape; ++i)
-    {
-        sum += m_buffer[i] * m_buffer[i];
-    }
+    double *d_m_buffer;
+    cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+    dim3 blockSize(BLOCK_SIZE);
+    dim3 numBlock(1);
+    norm_gpu<<<numBlock, blockSize>>>(sum, d_m_buffer, shape);
+    cudaDeviceSynchronize();
     return sqrt(sum);
 }
 
