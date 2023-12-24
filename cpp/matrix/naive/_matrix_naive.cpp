@@ -113,33 +113,41 @@ Naive_Matrix & Naive_Matrix::operator=(Naive_Matrix const & other)
     return *this;
 }
 
-Naive_Matrix Naive_Matrix::operator+(Naive_Matrix const & other){
+Naive_Matrix& Naive_Matrix::operator+=(Naive_Matrix const & other) {
     if(( nrow() != other.nrow()) || ( ncol() != other.ncol())){
         throw std::out_of_range("Number of elements mismatch.");
-    }    
-    Naive_Matrix temp(m_nrow, m_ncol);
+    }
     for(size_t i = 0 ; i < m_nrow; ++i){
         for(size_t j = 0; j < m_ncol; ++j){
-            temp(i,j) = (*this)(i,j) + other(i,j);
+            (*this)(i,j) += other(i,j);
         }
     }
-    return temp;
+    return (*this);
 }
 
-Naive_Matrix Naive_Matrix::operator-(Naive_Matrix const & other){
+Naive_Matrix Naive_Matrix::operator+(Naive_Matrix const & other) const { 
+    Naive_Matrix temp = *this;
+    return temp += other;
+}
+
+Naive_Matrix& Naive_Matrix::operator-=(Naive_Matrix const & other) {
     if(( nrow() != other.nrow()) || ( ncol() != other.ncol())){
         throw std::out_of_range("Number of elements mismatch.");
-    }    
-    Naive_Matrix temp(m_nrow, m_ncol);
+    }
     for(size_t i = 0 ; i < m_nrow; ++i){
         for(size_t j = 0; j < m_ncol; ++j){
-            temp(i,j) = (*this)(i,j) - other(i,j);
+            (*this)(i,j) -= other(i,j);
         }
     }
-    return temp;
+    return (*this);
 }
 
-Naive_Matrix Naive_Matrix::operator-(){
+Naive_Matrix Naive_Matrix::operator-(Naive_Matrix const & other) const { 
+    Naive_Matrix temp = *this;
+    return temp -= other;
+}
+
+Naive_Matrix Naive_Matrix::operator-() const {
     Naive_Matrix temp(m_nrow, m_ncol);
     for(size_t i = 0 ; i < m_nrow; ++i){
         for(size_t j = 0; j < m_ncol; ++j){
@@ -149,7 +157,7 @@ Naive_Matrix Naive_Matrix::operator-(){
     return temp;
 }
 
-Naive_Matrix Naive_Matrix::operator*(Naive_Matrix const & mat){
+Naive_Matrix Naive_Matrix::operator*(Naive_Matrix const & mat) const {
 
     if( mat.nrow() == 1 && mat.ncol() == 1){
         Naive_Matrix temp(m_nrow, m_ncol);
@@ -197,14 +205,18 @@ Naive_Matrix Naive_Matrix::operator*(Naive_Matrix const & mat){
     return result;
 }
 
-Naive_Matrix Naive_Matrix::operator*(double const & other){
-    Naive_Matrix temp(m_nrow, m_ncol);
+Naive_Matrix& Naive_Matrix::operator*=(double const & other) {
     for(size_t i = 0 ; i < m_nrow; ++i){
         for(size_t j = 0; j < m_ncol; ++j){
-            temp(i,j) = (*this)(i,j) * other;
+            (*this)(i,j) *= other;
         }
     }
-    return temp;
+    return (*this);
+}
+
+Naive_Matrix Naive_Matrix::operator*(double const & other) const {
+    Naive_Matrix temp = (*this);
+    return temp *= other;
 }
 
 bool Naive_Matrix::operator==(Naive_Matrix const & mat) const
