@@ -30,23 +30,6 @@ def is_symmetric(x):
     """
     return np.allclose(x, x.T)
 
-def generate_pos_def(n):
-    """
-    Functionality: Generate a random positive definite matrix
-    Parameters:
-    n: The dimension of the matrix.
-    """
-    A = np.random.rand(n, n)
-    return A.dot(A.T)
-
-def generate_symmetric(A):
-    """
-    Functionality: Generate a random symmetric matrix
-    Parameters:
-    n: The dimension of the matrix.
-    """
-    return (A + A.T)/2
-
 def generate_pos_def_symmetric(n, cond, max_value):
     """
     Functionality: Generate a random positive definite symmetric matrix
@@ -55,6 +38,22 @@ def generate_pos_def_symmetric(n, cond, max_value):
     cond: The fixed condition number.
     max_value: The maximum value in a matrix
     """
+    def generate_pos_def(n):
+        """
+        Functionality: Generate a random positive definite matrix
+        Parameters:
+        n: The dimension of the matrix.
+        """
+        A = np.random.rand(n, n)
+        return A.dot(A.T)
+
+    def generate_symmetric(A):
+        """
+        Functionality: Generate a symmetric matrix from the input matrix.
+        Parameters:
+        A: The input matrix.
+        """
+        return (A + A.T)/2
     # Initialize a random positive definite symmetric matrix.
     a = generate_pos_def(n)
     a = generate_symmetric(a)
