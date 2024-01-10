@@ -69,7 +69,7 @@ def generate_pos_def_symmetric(n, cond, max_value):
     assert(is_pos_def(a) and is_symmetric(a))
     return a
 
-def custom_linear_CG(x, a, b, epsilon = 5e-7, epoch=10000000, num_threads = 3):
+def custom_linear_CG(x, a, b, epsilon = 5e-7, epoch=10000000, use_accelerated = True, num_threads = 3):
     """
     Functionality: Solve the linear system Ax = b using conjugate gradient method by calling the C++ library
     Parameters:
@@ -83,7 +83,7 @@ def custom_linear_CG(x, a, b, epsilon = 5e-7, epoch=10000000, num_threads = 3):
     mat_x_min = None
     if(num_threads <= 0):
         num_threads = 1
-    if(num_threads != 1):
+    if(use_accelerated):
         mat_a = Accelerated_Matrix(a)
         mat_b = Accelerated_Matrix(b)
         mat_x = Accelerated_Matrix(x)
@@ -118,7 +118,7 @@ def np_linear_CG(x, A, b, epsilon, epoch=10000000):
     while True:
         
         if (np.linalg.norm(res) <= epsilon) or (count >= epoch):
-            return x
+            return x, count
         
         D = A.dot(delta)
         delta_dot_D = (delta.dot(D)) 
@@ -228,7 +228,7 @@ def np_line_search(f, df, x, d, alpha=5e-4, beta=0.8):
 
 
 
-def custom_nonlinear_CG(X, tol, alpha, beta, f, Df, method = "Fletcher_Reeves", num_threads = -1):
+def custom_nonlinear_CG(X, tol, alpha, beta, f, Df, method = "Fletcher_Reeves", use_accelerated = True, num_threads = -1):
     """
     Functionality: Solve the nonlinear system using conjugate gradient method by calling the c++ library
     Parameters:
@@ -241,7 +241,7 @@ def custom_nonlinear_CG(X, tol, alpha, beta, f, Df, method = "Fletcher_Reeves", 
     method: The method used to update the search direction.
     num_threads: The number of threads used in the C++ library.
     """
-    if(num_threads == 1):
+    if(not use_accelerated):
         return custom_naive_nonlinear_CG(X, tol, alpha, beta, f, Df, method = "Fletcher_Reeves")
     
     else:
