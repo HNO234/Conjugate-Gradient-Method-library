@@ -118,12 +118,27 @@ Accelerated_Matrix& Accelerated_Matrix::operator+=(Accelerated_Matrix const & ot
     }
     size_t shape = m_nrow * m_ncol;
     double *d_m_buffer, *d_other_m_buffer;
-    cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
-    cudaHostGetDevicePointer(&d_other_m_buffer, other.m_buffer, 0);
+    cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+    cudaMalloc((void**)&d_other_m_buffer, sizeof(double) * shape);
+    cudaMemcpy(d_m_buffer, m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_other_m_buffer, other.m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
+//     cudaMalloc((void**)&device_arr, sizeof(int) * elementSize);
+
+// // Data Transfer and Kernel Function
+// cudaMemcpy(device_arr, host_input_arr, sizeof(int) * elementSize, cudaMemcpyHostToDevice);
+// kernel<<<blockSize, threadsPerBlock>>>(device_arr, elementSize);
+// cudaDeviceSynchronize();
+// cudaMemcpy(host_output_arr, device_arr, sizeof(int) * elementSize, cudaMemcpyDeviceToHost);
+// cudaFree(device_arr);
+    // cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+    // cudaHostGetDevicePointer(&d_other_m_buffer, other.m_buffer, 0);
     dim3 blockSize(BLOCK_SIZE);
     dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
     iadd_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, shape);
     cudaDeviceSynchronize();
+    cudaMemcpy(m_buffer, d_m_buffer, sizeof(double) * shape, cudaMemcpyDeviceToHost);
+    cudaFree(d_m_buffer);
+    cudaFree(d_other_m_buffer);
     return (*this);
 }
 
@@ -144,12 +159,17 @@ Accelerated_Matrix& Accelerated_Matrix::operator-=(Accelerated_Matrix const & ot
     }
     size_t shape = m_nrow * m_ncol;
     double *d_m_buffer, *d_other_m_buffer;
-    cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
-    cudaHostGetDevicePointer(&d_other_m_buffer, other.m_buffer, 0);
+    cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+    cudaMalloc((void**)&d_other_m_buffer, sizeof(double) * shape);
+    cudaMemcpy(d_m_buffer, m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_other_m_buffer, other.m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
     dim3 blockSize(BLOCK_SIZE);
     dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
     isub_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, shape);
     cudaDeviceSynchronize();
+    cudaMemcpy(m_buffer, d_m_buffer, sizeof(double) * shape, cudaMemcpyDeviceToHost);
+    cudaFree(d_m_buffer);
+    cudaFree(d_other_m_buffer);
     return (*this);
 }
 
@@ -163,12 +183,16 @@ Accelerated_Matrix Accelerated_Matrix::operator-() const {
     Accelerated_Matrix temp(m_nrow, m_ncol);
     size_t shape = m_nrow * m_ncol;
     double *d_m_buffer, *d_other_m_buffer;
-    cudaHostGetDevicePointer(&d_m_buffer, temp.m_buffer, 0);
-    cudaHostGetDevicePointer(&d_other_m_buffer, m_buffer, 0);
+    cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+    cudaMalloc((void**)&d_other_m_buffer, sizeof(double) * shape);
+    cudaMemcpy(d_other_m_buffer, m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
     dim3 blockSize(BLOCK_SIZE);
     dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
     neg_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, shape);
     cudaDeviceSynchronize();
+    cudaMemcpy(temp.m_buffer, d_m_buffer, sizeof(double) * shape, cudaMemcpyDeviceToHost);
+    cudaFree(d_m_buffer);
+    cudaFree(d_other_m_buffer);
     return temp;
 }
 
@@ -229,12 +253,16 @@ Accelerated_Matrix Accelerated_Matrix::operator*(Accelerated_Matrix const & mat)
         double value = mat(0, 0);
         size_t shape = (*this).nrow() * (*this).ncol();
         double *d_m_buffer, *d_other_m_buffer;
-        cudaHostGetDevicePointer(&d_m_buffer, temp.m_buffer, 0);
-        cudaHostGetDevicePointer(&d_other_m_buffer, m_buffer, 0);
+        cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+        cudaMalloc((void**)&d_other_m_buffer, sizeof(double) * shape);
+        cudaMemcpy(d_other_m_buffer, m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
         dim3 blockSize(BLOCK_SIZE);
         dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
         matmul1_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, value, shape);
         cudaDeviceSynchronize();
+        cudaMemcpy(temp.m_buffer, d_m_buffer, sizeof(double) * shape, cudaMemcpyDeviceToHost);
+        cudaFree(d_m_buffer);
+        cudaFree(d_other_m_buffer);
         return temp;
     }
 
@@ -243,38 +271,58 @@ Accelerated_Matrix Accelerated_Matrix::operator*(Accelerated_Matrix const & mat)
         double value = (*this)(0, 0);
         size_t shape = mat.nrow() * mat.ncol();
         double *d_m_buffer, *d_other_m_buffer;
-        cudaHostGetDevicePointer(&d_m_buffer, temp.m_buffer, 0);
-        cudaHostGetDevicePointer(&d_other_m_buffer, mat.m_buffer, 0);
+        cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+        cudaMalloc((void**)&d_other_m_buffer, sizeof(double) * shape);
+        cudaMemcpy(d_other_m_buffer, mat.m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
         dim3 blockSize(BLOCK_SIZE);
         dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
         matmul1_gpu<<<numBlock, blockSize>>>(d_m_buffer, d_other_m_buffer, value, shape);
         cudaDeviceSynchronize();
+        cudaMemcpy(temp.m_buffer, d_m_buffer, sizeof(double) * shape, cudaMemcpyDeviceToHost);
+        cudaFree(d_m_buffer);
+        cudaFree(d_other_m_buffer);
         return temp;
     }
 
     if( (*this).ncol() == 1 && mat.ncol() == 1 && mat.nrow() != 1){
         Accelerated_Matrix return_value(1, 1);
         double *d_m_buffer, *d_other_m_buffer, *d_output_m_buffer;
-        cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
-        cudaHostGetDevicePointer(&d_other_m_buffer, mat.m_buffer, 0);
-        cudaHostGetDevicePointer(&d_output_m_buffer, return_value.m_buffer, 0);
+        // cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+        // cudaHostGetDevicePointer(&d_other_m_buffer, mat.m_buffer, 0);
+        // cudaHostGetDevicePointer(&d_output_m_buffer, return_value.m_buffer, 0);
+        auto shape = (*this).nrow();
+        cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+        cudaMalloc((void**)&d_other_m_buffer, sizeof(double) * shape);
+        cudaMalloc((void**)&d_output_m_buffer, sizeof(double) * 1);
+        cudaMemcpy(d_m_buffer, m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_other_m_buffer, mat.m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
         dim3 blockSize(BLOCK_SIZE);
         dim3 numBlock(1);
         matmul2_gpu<<<numBlock, blockSize>>>(d_output_m_buffer, d_m_buffer, d_other_m_buffer, (*this).nrow());
         cudaDeviceSynchronize();
+        cudaMemcpy(return_value.m_buffer, d_output_m_buffer, sizeof(double) * 1, cudaMemcpyDeviceToHost);
+        cudaFree(d_m_buffer);
+        cudaFree(d_other_m_buffer);
+        cudaFree(d_output_m_buffer);
         return return_value;
     }
     
     if (mat.ncol() == 1) {
         Accelerated_Matrix return_value((*this).nrow(), mat.ncol());
         double *d_m_buffer, *d_other_m_buffer, *d_output_m_buffer;
-        cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
-        cudaHostGetDevicePointer(&d_other_m_buffer, mat.m_buffer, 0);
-        cudaHostGetDevicePointer(&d_output_m_buffer, return_value.m_buffer, 0);
+        cudaMalloc((void**)&d_m_buffer, sizeof(double) * (*this).nrow() * (*this).ncol());
+        cudaMalloc((void**)&d_other_m_buffer, sizeof(double) * mat.nrow() * mat.ncol());
+        cudaMalloc((void**)&d_output_m_buffer, sizeof(double) * (*this).nrow() * mat.ncol());
+        cudaMemcpy(d_m_buffer, m_buffer, sizeof(double) * (*this).nrow() * (*this).ncol(), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_other_m_buffer, mat.m_buffer, sizeof(double) * mat.nrow() * mat.ncol(), cudaMemcpyHostToDevice);
         dim3 blockSize(BLOCK_SIZE);
         dim3 numBlock((*this).nrow());
         matmul2_gpu<<<numBlock, blockSize>>>(d_output_m_buffer, d_m_buffer, d_other_m_buffer, (*this).ncol());
         cudaDeviceSynchronize();
+        cudaMemcpy(return_value.m_buffer, d_output_m_buffer, sizeof(double) * (*this).nrow() * mat.ncol(), cudaMemcpyDeviceToHost);
+        cudaFree(d_m_buffer);
+        cudaFree(d_other_m_buffer);
+        cudaFree(d_output_m_buffer);
         return return_value;
     }
     
@@ -314,11 +362,14 @@ Accelerated_Matrix Accelerated_Matrix::operator*(double const & other) const {
 Accelerated_Matrix& Accelerated_Matrix::operator*=(double const & other) {
     size_t shape = m_nrow * m_ncol;
     double *d_m_buffer;
-    cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+    cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+    cudaMemcpy(d_m_buffer, m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
     dim3 blockSize(BLOCK_SIZE);
     dim3 numBlock((shape + BLOCK_SIZE - 1) / BLOCK_SIZE);
     imul_gpu<<<numBlock, blockSize>>>(d_m_buffer, other, shape);
     cudaDeviceSynchronize();
+    cudaMemcpy(m_buffer, d_m_buffer, sizeof(double) * shape, cudaMemcpyDeviceToHost);
+    cudaFree(d_m_buffer);
     return (*this);
 }
 
@@ -393,11 +444,14 @@ double Accelerated_Matrix::norm()
     double sum = 0.0;
     size_t shape = m_nrow * m_ncol;
     double *d_m_buffer;
-    cudaHostGetDevicePointer(&d_m_buffer, m_buffer, 0);
+    cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+    cudaMemcpy(d_m_buffer, m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
     dim3 blockSize(BLOCK_SIZE);
     dim3 numBlock(1);
     norm_gpu<<<numBlock, blockSize>>>(sum, d_m_buffer, shape);
     cudaDeviceSynchronize();
+    cudaMemcpy(m_buffer, d_m_buffer, sizeof(double) * shape, cudaMemcpyDeviceToHost);
+    cudaFree(d_m_buffer);
     return sqrt(sum);
 }
 
@@ -408,11 +462,11 @@ size_t Accelerated_Matrix::ncol() const { return m_ncol; }
 
 void Accelerated_Matrix::reset_buffer(size_t nrow, size_t ncol){
     if (m_buffer) {
-        cudaFreeHost(m_buffer);
+        free(m_buffer);
     }
     const size_t nelement = nrow * ncol;
     if (nelement) {
-        cudaHostAlloc(&m_buffer, sizeof(double) * nelement, cudaHostAllocMapped);
+        m_buffer = (double*)malloc(sizeof(double) * nelement);
     } else {
         m_buffer = nullptr;
     }

@@ -3,8 +3,8 @@ WORKING_DIR = $(shell pwd)
 CXX = /usr/bin/g++-10
 NVCC = nvcc
 FLAGS_CPU = -g -O3 -m64 -Wall -shared -std=c++17 -fPIC -fopenmp -pthread -ffast-math -ftree-vectorize
-FLAGS_GPU_COMPILE = -g -O3 -m64 -shared -std=c++17 -rdc=true -gencode=arch=compute_61,code=sm_61 -Xcompiler '-fPIC' --compiler-bindir=$(CXX)
-FLAGS_GPU_LINK = -shared -gencode=arch=compute_61,code=sm_61 -Xcompiler '-fPIC' --compiler-bindir=$(CXX)
+FLAGS_GPU_COMPILE = -g -O3 -m64 -shared -std=c++17 -rdc=true -gencode=arch=compute_61,code=sm_61 -Xcompiler '-fPIC' --compiler-bindir=$(CXX) -Xcompiler -fopenmp
+FLAGS_GPU_LINK = -shared -gencode=arch=compute_61,code=sm_61 -Xcompiler '-fPIC' --compiler-bindir=$(CXX) -lgomp
 PYBINCLUDE = $(shell python3-config --includes) $(shell python3 -m pybind11 --includes)
 FLAGS_DEP = -MMD -MP
 DIRS_CPU = $(WORKING_DIR)/cpp/matrix/naive $(WORKING_DIR)/cpp/cg_method $(WORKING_DIR)/cpp/matrix/cpu
