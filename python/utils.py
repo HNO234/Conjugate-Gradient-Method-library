@@ -376,6 +376,7 @@ def np_nonlinear_CG(X, tol, alpha, beta, f, Df, method = "Fletcher_Reeves"):
     else:
         raise AssertionError("method not supported")
 
+    count = 0
     while True:
         start_point = X
         step = np_line_search(f = f, df = Df, x = start_point, d = delta, alpha=alpha, beta=beta)
@@ -385,9 +386,8 @@ def np_nonlinear_CG(X, tol, alpha, beta, f, Df, method = "Fletcher_Reeves"):
             raise AssertionError("It diverges, please try another start point or another hyperparameter.")
         else:
             return X, f(X)
-
         if NORM(Df(next_X)) < tol:
-            return next_X, f(next_X)
+            return next_X, f(next_X), count
 
         else:
             X = next_X
@@ -395,6 +395,7 @@ def np_nonlinear_CG(X, tol, alpha, beta, f, Df, method = "Fletcher_Reeves"):
             next_Df = Df(X)
             delta = method_func(cur_Df, next_Df, delta)
             delta = np.array(delta.tolist())
+            count += 1
             
 def Fletcher_Reeves_next_iteration(cur_Df, next_Df, delta):
     """

@@ -48,7 +48,7 @@ def test_nonlinear_cg():
     for method in ["Fletcher_Reeves", "Dai-Yuan", "Hager-Zhang"]:
         x = np.copy(x_rand)
         print("case 1 np: ", method)
-        x, _ = utils.np_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method)
+        x, _, _ = utils.np_nonlinear_CG(x, 5e-8, 0.5, 0.8, utils.nonlinear_func_1, utils.grad(utils.nonlinear_func_1), method)
         x = np.array(x)
         x_min = np.array([1, 1])
         assert(np.isclose(x_min, x).all())
@@ -71,7 +71,7 @@ def test_nonlinear_cg():
     for method in ["Fletcher_Reeves", "Dai-Yuan", "Hager-Zhang"]:
         print("case 2 np: ", method)
         x = np.copy(x_rand)
-        x, _ = utils.np_nonlinear_CG(x, 1e-8, 0.5, 0.8, utils.nonlinear_func_2, utils.grad(utils.nonlinear_func_2), method)
+        x, _, _ = utils.np_nonlinear_CG(x, 1e-8, 0.5, 0.8, utils.nonlinear_func_2, utils.grad(utils.nonlinear_func_2), method)
         x = np.array(x)
         x_min = np.zeros(100)
         assert(np.isclose(x_min, x).all())            
