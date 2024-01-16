@@ -123,6 +123,7 @@ if __name__ == '__main__':
        for cond in cond_list:
            print("n = %d, cond = %d" % (n, cond))
            compare_linear_cg(n = n, cond = cond, max_value = 10, epoch = 10, num_of_threads = 4)
-    n_list = [100, 1000, 10000, 100000]
+    n_list = [100, 1000]
     for n in n_list:
-        compare_nonlinear_cg_func2(10, 4, n)
+        print("n = %d" % n)
+        compare_nonlinear_cg_func2(10, 4, n)  

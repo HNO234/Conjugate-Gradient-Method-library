@@ -411,7 +411,7 @@ int const & Accelerated_Matrix::get_number_of_threads() const{
     return this -> number_of_threads;
 }
 
- __global__ void norm_gpu(double& output, double* a_mat, int ncol) {
+__global__ void norm_gpu(double* output, double* a_mat, int ncol) {
     __shared__ double sdata[BLOCK_SIZE];
     unsigned int tid = threadIdx.x;
     unsigned int a_mat_i = tid;
@@ -436,23 +436,27 @@ int const & Accelerated_Matrix::get_number_of_threads() const{
     if (tid < 32)
         warpReduce(sdata, tid);
     if (tid == 0)
-        output = sdata[0];
+        output[0] = sdata[0];
  }
 
 double Accelerated_Matrix::norm()
 {
-    double sum = 0.0;
     size_t shape = m_nrow * m_ncol;
-    double *d_m_buffer;
+    double *d_m_buffer, *sum, *ret_sum;
     cudaMalloc((void**)&d_m_buffer, sizeof(double) * shape);
+    cudaMalloc((void**)&sum, sizeof(double));
     cudaMemcpy(d_m_buffer, m_buffer, sizeof(double) * shape, cudaMemcpyHostToDevice);
     dim3 blockSize(BLOCK_SIZE);
     dim3 numBlock(1);
     norm_gpu<<<numBlock, blockSize>>>(sum, d_m_buffer, shape);
     cudaDeviceSynchronize();
-    cudaMemcpy(m_buffer, d_m_buffer, sizeof(double) * shape, cudaMemcpyDeviceToHost);
+    ret_sum = (double*)malloc(sizeof(double));
+    cudaMemcpy(ret_sum, sum, sizeof(double), cudaMemcpyDeviceToHost);
+    cudaFree(sum);
     cudaFree(d_m_buffer);
-    return sqrt(sum);
+    double ret = sqrt(ret_sum[0]);
+    free(ret_sum);
+    return ret;
 }
 
 double* Accelerated_Matrix::data() const { return m_buffer; }
