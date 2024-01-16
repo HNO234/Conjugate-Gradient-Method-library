@@ -1,8 +1,7 @@
 # Conjugate Gradient Method Library
 Conjugate Gradient Method Library implement the linear CG method and 
 non-linear CG menthod by numpy and C++. 
-Furthermore, Conjugate Gradient Method Library supports 
-std::thread and OpenMP operations, that can further accelerate the c++ library.
+Furthermore, Conjugate Gradient Method Library supports OpenMP and CUDA operations, that can further accelerate the C++ library.
 
 ## Introduction to the Conjugate Gradient Method
 Conjugate gradient method is a numerical method that can find the 
@@ -28,11 +27,27 @@ functions.
 
 2. Install [numpy](https://numpy.org/install/), 
 [autograd](https://github.com/HIPS/autograd), 
-and [OpenMP](https://www.openmp.org/), 
-or build and run the dockerfile in /contrib/docker.
+[OpenMP](https://www.openmp.org/), 
+and [CUDA](https://developer.nvidia.com/cuda-toolkit), 
+or build and run the dockerfile in /contrib/docker (under construction).
 
-3. ```make test``` for run the pytest 
-and ```make demo``` for run the simple example and analysis.
+3. Here are the commands for the CPU implementations:
+
+| Command | Utility | 
+| :----: | :----: |
+| ```make``` | Compile the module |
+| ```make test``` | Run the pytest |
+| ```make demo``` | Run the simple example and analysis. |
+
+For the GPU implementations, simply add the ```GPU=1``` flag:
+
+| Command | Utility | 
+| :----: | :----: |
+| ```make GPU=1``` | Compile the module |
+| ```make test GPU=1``` | Run the pytest |
+| ```make demo GPU=1``` | Run the simple example and analysis. |
+
+Run ```python3 demo/demo_cg_method.py``` for reproducing the results in the paper (which is also included in ```make demo```). 
 
 ## User Tutorial
 <a href="./python">API Introduction</a>

@@ -51,15 +51,15 @@ x_min = utils.np_linear_CG(x = initial_point,
 
 If you want to run the algorithm implemented by c++, 
 use the following function.  
-When num_threads > 1, some of the matrix operator would be paralleled,
-and the tiled matrix multiplication would be used.
+When ```use_accelerated = True```, some of the matrix operator would be paralleled.
 
 ```python
 x_min = utils.custom_linear_CG(x = initial_point, 
                             A = A, 
                             b = b, 
                             epsilon = convergence_tolerance, 
-                            epoch = max_iteration, 
+                            epoch = max_iteration,
+                            use_accelerated = True,
                             num_threads = number_of_threads)
 ```
 
@@ -103,8 +103,7 @@ x_min = utils.np_nonlinear_CG(X = initial_point,
 
 If you want to run the algorithm implemented by c++, 
 use the following function.  
-When num_threads > 1, some of the matrix operator would be paralleled,
-and the tiled matrix multiplication would be used.
+When ```use_accelerated = True```, some of the matrix operator would be paralleled.
 
 ```python
 x_min = utils.custom_nonlinear_CG(X = initial_point, 
@@ -114,5 +113,6 @@ x_min = utils.custom_nonlinear_CG(X = initial_point,
     f = function, 
     Df = derivative_function, 
     method = "Fletcher_Reeves",
+    use_accelerated = True,
     num_threads = number_of_threads)
 ```

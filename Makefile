@@ -66,12 +66,14 @@ $(TARGET_GPU): %.o : %.cu
 $(TARGET_SHARED): %.o : %.cpp
 	$(CXX) $(FLAGS_CPU) $(FLAGS_DEP) $(PYBINCLUDE) $(CXXINCLUDE_CPU)  -c $< -o $@
 
-demo: $(MODULE_SHARE_OBJS)
+demo:
+	$(MAKE) all
 	mkdir -p demo/results
 	python3 demo/demo_matrix.py | tee demo/results/matrix_performance.txt
 	python3 demo/demo_cg_method.py | tee demo/results/cg_method_performance.txt
 
-test: $(MODULE_SHARE_OBJS)
+test:
+	$(MAKE) all
 	python3 -m pytest -v tests/test_matrix.py
 	python3 -m pytest -v tests/test_cg_method.py
 
